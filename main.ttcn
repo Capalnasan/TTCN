@@ -1,0 +1,63 @@
+module main{
+    //define message
+    type record Msg {
+        charstring content;
+    }
+
+    //d define message port
+    type port MsgPort message {
+        inout Msg;
+    }
+
+    // define component
+    type component MC {
+        port MsgPort p;
+    }
+
+    // a function
+    function a_function() runs on MC {
+        var Msg m := {"ping" };
+        log("A: Sending message to B: " & m.content);
+        p.send(m);
+
+        var Msg resp;
+        p.receive(resp);
+        log("A: Received response back from B: " & resp.content);
+        if(resp.content !="pong"){ // check if the response is as expected
+            log("A: Error - received unexpected response");
+            setverdict(fail);
+            return;
+        }
+        setverdict(pass);
+    }
+
+    // b function
+    function b_function() runs on MC {
+        var Msg m;
+        p.receive(m);
+        log("B: Received message from A: " & m.content);
+        if(m.content != "ping") { // check if the received message is as expected
+            log("B: Error - received unexpected message");
+            setverdict(fail);
+            return;
+        }
+        var Msg resp := {"pong" }; // prepare the response
+        log("B: Sending back the response message"); // send the response
+        p.send(resp); 
+    }
+
+    // control section
+    control {
+        var MC a, b;
+        connect(a.p, b.p);
+        log("Ports connected between a and b");
+        //connect the ports of a and b
+        log("Starting test...");
+        par {
+            execute(a_function()) on a;
+            execute(b_function()) on b;
+            //execute both function in the same time
+        }
+        log("test completed");
+    }
+}
